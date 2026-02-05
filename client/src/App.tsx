@@ -1,4 +1,4 @@
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import './App.css';
 
 // Types matching the backend API
@@ -38,7 +38,7 @@ interface ErrorState {
   details?: string;
 }
 
-const API_BASE_URL = 'http://localhost:3001';
+const API_BASE_URL = import.meta.env.PROD ? '' : 'http://localhost:3001';
 
 function App() {
   const [query, setQuery] = useState('');
@@ -115,10 +115,10 @@ function App() {
         <div className="health-status">
           <span
             className={`status-dot ${healthChecking
-                ? 'checking'
-                : health?.services.api
-                  ? 'online'
-                  : 'offline'
+              ? 'checking'
+              : health?.services.api
+                ? 'online'
+                : 'offline'
               }`}
           />
           <span>
