@@ -25,7 +25,7 @@ interface HealthStatus {
   status: string;
   services: {
     api: boolean;
-    ollama: boolean;
+    llm: boolean;
     trustGraph: {
       loaded: boolean;
       sourceCount: number;
@@ -128,10 +128,10 @@ function App() {
             <>
               <span style={{ color: 'var(--text-muted)' }}>|</span>
               <span
-                className={`status-dot ${health.services.ollama ? 'online' : 'offline'}`}
+                className={`status-dot ${health.services.llm ? 'online' : 'offline'}`}
               />
               <span>
-                Ollama: {health.services.ollama ? 'Ready' : 'Not Connected'}
+                LLM Service: {health.services.llm ? 'Online' : 'Not Configured'}
               </span>
               <span style={{ color: 'var(--text-muted)' }}>|</span>
               <span style={{ color: 'var(--text-muted)' }}>
