@@ -5,9 +5,9 @@ interface Source {
     id: string;
     name: string;
     baseUrl: string;
-    category: 'Health' | 'Finance' | 'Legal';
+    category: string;
     sourceType: string;
-    trustScore: number;
+    trustScore?: number;
     tags: string[];
 }
 
@@ -20,19 +20,22 @@ const API_BASE_URL = import.meta.env.PROD ? '' : 'http://localhost:3001';
 
 export function AdminDashboard({ token, onLogout }: AdminDashboardProps) {
     const [sources, setSources] = useState<Source[]>([]);
+    const [categories, setCategories] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     // Form State
+    const [editingId, setEditingId] = useState<string | null>(null);
     const [name, setName] = useState('');
     const [url, setUrl] = useState('');
-    const [category, setCategory] = useState('Health');
-    const [score, setScore] = useState(80);
+    const [category, setCategory] = useState('');
+    const [score, setScore] = useState<string>('');
     const [tags, setTags] = useState('');
 
-    // Fetch sources on mount
+    // Fetch sources and categories on mount
     useEffect(() => {
         fetchSources();
+        fetchCategories();
     }, [token]);
 
     const fetchSources = async () => {
@@ -52,39 +55,79 @@ export function AdminDashboard({ token, onLogout }: AdminDashboardProps) {
         }
     };
 
-    const handleAddSource = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const fetchCategories = async () => {
         try {
-            const newSource = {
+            const res = await fetch(`${API_BASE_URL}/api/admin/categories`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            const data = await res.json();
+            if (data.categories) {
+                setCategories(data.categories);
+            }
+        } catch (err) {
+            // Silently fail - categories are just for autocomplete
+        }
+    };
+
+    const resetForm = () => {
+        setEditingId(null);
+        setName('');
+        setUrl('');
+        setCategory('');
+        setScore('');
+        setTags('');
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        try {
+            const sourceData = {
                 name,
                 baseUrl: url,
                 category,
                 sourceType: 'Custom',
-                trustScore: Number(score),
-                tags: tags.split(',').map((t) => t.trim()),
+                trustScore: score ? Number(score) : undefined,
+                tags: tags ? tags.split(',').map((t) => t.trim()) : [],
             };
 
-            const res = await fetch(`${API_BASE_URL}/api/admin/sources`, {
-                method: 'POST',
+            const isEditing = !!editingId;
+            const endpoint = isEditing
+                ? `${API_BASE_URL}/api/admin/sources/${editingId}`
+                : `${API_BASE_URL}/api/admin/sources`;
+
+            const res = await fetch(endpoint, {
+                method: isEditing ? 'PUT' : 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${token}`,
                 },
-                body: JSON.stringify(newSource),
+                body: JSON.stringify(sourceData),
             });
 
             if (res.ok) {
-                // Reset form and reload
-                setName('');
-                setUrl('');
-                setTags('');
+                resetForm();
                 fetchSources();
+                fetchCategories(); // Refresh categories in case a new one was added
             } else {
-                alert('Failed to add source');
+                const err = await res.json();
+                alert(err.error || 'Failed to save source');
             }
         } catch (err) {
-            alert('Error adding source');
+            alert('Error saving source');
         }
+    };
+
+    const handleEdit = (source: Source) => {
+        setEditingId(source.id);
+        setName(source.name);
+        setUrl(source.baseUrl);
+        setCategory(source.category);
+        setScore(source.trustScore?.toString() || '');
+        setTags(source.tags?.join(', ') || '');
+
+        // Scroll to form
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const handleDelete = async (id: string) => {
@@ -93,10 +136,16 @@ export function AdminDashboard({ token, onLogout }: AdminDashboardProps) {
         // Optimistic update
         setSources(sources.filter((s) => s.id !== id));
 
-        await fetch(`${API_BASE_URL}/api/admin/sources/${id}`, {
+        const res = await fetch(`${API_BASE_URL}/api/admin/sources/${id}`, {
             method: 'DELETE',
             headers: { Authorization: `Bearer ${token}` },
         });
+
+        if (!res.ok) {
+            // Revert on failure
+            fetchSources();
+            alert('Failed to delete source');
+        }
     };
 
     return (
@@ -108,10 +157,10 @@ export function AdminDashboard({ token, onLogout }: AdminDashboardProps) {
                 </button>
             </header>
 
-            {/* Add Source Form */}
+            {/* Add/Edit Source Form */}
             <div className="admin-panel">
-                <h3>Add New Trusted Source</h3>
-                <form onSubmit={handleAddSource} className="add-source-form">
+                <h3>{editingId ? '✏️ Edit Source' : '➕ Add New Trusted Source'}</h3>
+                <form onSubmit={handleSubmit} className="add-source-form">
                     <div className="form-row">
                         <input
                             placeholder="Source Name (e.g. My Medical Journal)"
@@ -127,16 +176,23 @@ export function AdminDashboard({ token, onLogout }: AdminDashboardProps) {
                         />
                     </div>
                     <div className="form-row">
-                        <select value={category} onChange={(e) => setCategory(e.target.value)}>
-                            <option value="Health">Health</option>
-                            <option value="Finance">Finance</option>
-                            <option value="Legal">Legal</option>
-                        </select>
+                        <input
+                            list="category-suggestions"
+                            placeholder="Category (e.g. Health, Finance, Crypto...)"
+                            value={category}
+                            onChange={(e) => setCategory(e.target.value)}
+                            required
+                        />
+                        <datalist id="category-suggestions">
+                            {categories.map((cat) => (
+                                <option key={cat} value={cat} />
+                            ))}
+                        </datalist>
                         <input
                             type="number"
-                            placeholder="Trust Score (0-100)"
+                            placeholder="Trust Score (optional, 0-100)"
                             value={score}
-                            onChange={(e) => setScore(Number(e.target.value))}
+                            onChange={(e) => setScore(e.target.value)}
                             min="0"
                             max="100"
                         />
@@ -145,12 +201,18 @@ export function AdminDashboard({ token, onLogout }: AdminDashboardProps) {
                         placeholder="Tags (comma separated, e.g. crypto, bitcoin, news)"
                         value={tags}
                         onChange={(e) => setTags(e.target.value)}
-                        required
                         className="full-width"
                     />
-                    <button type="submit" className="add-btn">
-                        + Add to Trust Graph
-                    </button>
+                    <div className="form-actions">
+                        <button type="submit" className="add-btn">
+                            {editingId ? '💾 Save Changes' : '+ Add to Trust Graph'}
+                        </button>
+                        {editingId && (
+                            <button type="button" className="cancel-btn" onClick={resetForm}>
+                                Cancel
+                            </button>
+                        )}
+                    </div>
                 </form>
             </div>
 
@@ -159,6 +221,10 @@ export function AdminDashboard({ token, onLogout }: AdminDashboardProps) {
                 <h3>Active Sources ({sources.length})</h3>
                 {loading ? (
                     <p>Loading...</p>
+                ) : sources.length === 0 ? (
+                    <div className="empty-state">
+                        <p>No sources yet. Add your first trusted source above!</p>
+                    </div>
                 ) : (
                     <div className="source-table-container">
                         <table className="source-table">
@@ -167,7 +233,7 @@ export function AdminDashboard({ token, onLogout }: AdminDashboardProps) {
                                     <th>Name</th>
                                     <th>Category</th>
                                     <th>Score</th>
-                                    <th>Action</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -180,19 +246,25 @@ export function AdminDashboard({ token, onLogout }: AdminDashboardProps) {
                                             </div>
                                         </td>
                                         <td>
-                                            <span className={`category-badge ${s.category.toLowerCase()}`}>
+                                            <span className="category-badge dynamic">
                                                 {s.category}
                                             </span>
                                         </td>
-                                        <td>{s.trustScore}</td>
-                                        <td>
+                                        <td>{s.trustScore ?? '—'}</td>
+                                        <td className="action-buttons">
+                                            <button
+                                                onClick={() => handleEdit(s)}
+                                                className="edit-btn"
+                                                title="Edit Source"
+                                            >
+                                                ✏️
+                                            </button>
                                             <button
                                                 onClick={() => handleDelete(s.id)}
                                                 className="delete-btn"
-                                                disabled={s.id.startsWith('custom_') === false} // Only delete custom sources for now
-                                                title={s.id.startsWith('custom_') ? 'Delete Source' : 'Cannot delete hardcoded sources'}
+                                                title="Delete Source"
                                             >
-                                                {s.id.startsWith('custom_') ? '🗑️' : '🔒'}
+                                                🗑️
                                             </button>
                                         </td>
                                     </tr>
