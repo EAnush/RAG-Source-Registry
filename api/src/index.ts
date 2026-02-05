@@ -4,6 +4,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import queryRouter from './routes/query.js';
 import redirectRouter from './routes/redirect.js';
+import adminRouter from './routes/admin.js';
 import { checkLlmHealth } from './services/llmService.js';
 import { trustGraph } from './data/trustGraph.js';
 
@@ -30,6 +31,7 @@ const apiRouter = express.Router();
 
 apiRouter.use('/query', queryRouter);
 apiRouter.use('/redirect', redirectRouter);
+apiRouter.use('/admin', adminRouter);
 
 apiRouter.get('/health', async (_req, res) => {
     const llmStatus = await checkLlmHealth();

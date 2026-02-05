@@ -347,14 +347,22 @@ export function getSourcesByCategory(category: Category): Source[] {
 }
 
 // Helper function to search sources by tags
-export function searchSourcesByTags(category: Category, keywords: string[]): Source[] {
-    const categoryMatches = trustGraph.filter((source) => source.category === category);
+export function searchSourcesByTags(
+    category: Category,
+    keywords: string[],
+    customSourceList?: Source[]
+): Source[] {
+    // 1. Determine which list to use (Dynamic or Hardcoded)
+    const sourceList = customSourceList || trustGraph;
+
+    // 2. Filter by Category first
+    const categoryMatches = sourceList.filter((source) => source.category === category);
 
     if (keywords.length === 0) {
         return categoryMatches;
     }
 
-    // Score each source by how many keywords match its tags
+    // 3. Score each source
     const scored = categoryMatches.map((source) => {
         const lowerTags = source.tags.map((t) => t.toLowerCase());
         const matchCount = keywords.filter((kw) =>
@@ -363,7 +371,7 @@ export function searchSourcesByTags(category: Category, keywords: string[]): Sou
         return { source, matchCount };
     });
 
-    // Sort by match count (descending), then by trust score (descending)
+    // 4. Sort by score
     scored.sort((a, b) => {
         if (b.matchCount !== a.matchCount) {
             return b.matchCount - a.matchCount;
@@ -371,13 +379,13 @@ export function searchSourcesByTags(category: Category, keywords: string[]): Sou
         return b.source.trustScore - a.source.trustScore;
     });
 
-    // Return sources that have at least one match, or top sources if no matches
+    // 5. Return matches
     const matched = scored.filter((s) => s.matchCount > 0).map((s) => s.source);
 
     if (matched.length > 0) {
         return matched;
     }
 
-    // Fallback: return top sources by trust score for the category
+    // Fallback: return top sources
     return categoryMatches.sort((a, b) => b.trustScore - a.trustScore).slice(0, 3);
 }
