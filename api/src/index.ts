@@ -23,12 +23,15 @@ app.use((req, _res, next) => {
     next();
 });
 
-// Routes
-app.use('/api/query', queryRouter);
-app.use('/api/redirect', redirectRouter);
+// ROUTING STRATEGY:
+// Create a router that handles the core logic, then mount it at BOTH
+// '/api' (for local dev and explicit calls) AND '/' (for Vercel serverless where paths might be rewritten/stripped).
+const apiRouter = express.Router();
 
-// Health check endpoint
-app.get('/api/health', async (_req, res) => {
+apiRouter.use('/query', queryRouter);
+apiRouter.use('/redirect', redirectRouter);
+
+apiRouter.get('/health', async (_req, res) => {
     const llmStatus = await checkLlmHealth();
 
     res.json({
@@ -46,20 +49,23 @@ app.get('/api/health', async (_req, res) => {
     });
 });
 
-// Root endpoint
-app.get('/', (_req, res) => {
+apiRouter.get('/', (_req, res) => {
     res.json({
         name: 'Trust Layer API',
         version: '1.0.0-mvp',
         description: 'Source Recommendation API for Enterprise AI - The Data Firewall',
         endpoints: {
-            query: 'GET /api/query?q=your+query',
-            redirect: 'GET /api/redirect?token=jwt_token',
-            health: 'GET /api/health',
-            accessLog: 'GET /api/redirect/log',
+            query: 'GET /query?q=your+query',
+            redirect: 'GET /redirect?token=jwt_token',
+            health: 'GET /health',
+            accessLog: 'GET /redirect/log',
         },
     });
 });
+
+// Dual-Mount Strategy
+app.use('/api', apiRouter);
+app.use('/', apiRouter);
 
 // Error handling middleware
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
