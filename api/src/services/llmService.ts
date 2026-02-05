@@ -7,7 +7,7 @@ const MODEL_NAME = 'llama-3.3-70b-versatile'; // Faster, smarter, free-tier frie
 
 // Schema for the expected translation output
 const TranslationSchema = z.object({
-    category: z.enum(['Health', 'Finance', 'Legal']),
+    category: z.string(), // Freeform - any category allowed
     keywords: z.array(z.string()),
 });
 
@@ -21,15 +21,18 @@ export interface TranslationResponse {
 
 const SYSTEM_PROMPT = `You are a query translator for a trust verification system. Your ONLY job is to analyze user queries and output a JSON object.
 
-CATEGORY DEFINITIONS:
-- "Health": Anything about body, illness, symptoms, medicine, doctors, disease, injury, mental health
-- "Finance": Anything about money, taxes, investments, banks, crypto, stocks, debt, income
-- "Legal": Anything about laws, rights, courts, police, lawyers, contracts, disputes, custody, eviction, lawsuits, crimes, arrest
+COMMON CATEGORIES (use these if applicable, or create a new one):
+- "Health": Body, illness, symptoms, medicine, doctors, disease, injury, mental health
+- "Finance": Money, taxes, investments, banks, crypto, stocks, debt, income
+- "Legal": Laws, rights, courts, police, lawyers, contracts, disputes
+- "Technology": Software, hardware, programming, AI, cybersecurity
+- "Education": Schools, learning, courses, degrees, research
+- "Science": Physics, chemistry, biology, research, experiments
 
 RULES:
 1. You MUST output ONLY valid JSON.
 2. The JSON must have exactly two fields:
-   - "category": Must be exactly one of: "Health", "Finance", or "Legal"
+   - "category": A single-word or short category name (use common ones above, or create appropriate new ones like "Crypto", "Sports", "Travel", etc.)
    - "keywords": An array of 2-5 relevant search keywords.
 
 IMPORTANT FOR KEYWORDS:
