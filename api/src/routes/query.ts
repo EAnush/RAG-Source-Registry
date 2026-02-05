@@ -1,7 +1,7 @@
 // Query Route - Main API Entry Point
 import { Router, Request, Response } from 'express';
 import { translateQuery, TranslationResult } from '../services/llmService.js';
-import { searchSourcesByTags, Category, Source } from '../data/trustGraph.js';
+import { searchSourcesByTags, Source } from '../data/trustGraph.js';
 import { SourceStore } from '../services/store.js';
 import { signSourceAccess, signManifest } from '../services/jwtService.js';
 
@@ -56,7 +56,7 @@ router.get('/', async (req: Request, res: Response<SourceManifest | ErrorRespons
 
         // 3. Find relevant sources from the combined list
         const relevantSources = searchSourcesByTags(
-            translation.category as Category,
+            translation.category,
             translation.keywords,
             allSources
         );
