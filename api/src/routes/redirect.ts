@@ -1,6 +1,6 @@
 // Redirect Route - Masked URL Resolution
 import { Router, Request, Response } from 'express';
-import { verifyToken, TokenPayload } from '../services/jwtService';
+import { verifyToken, TokenPayload } from '../services/jwtService.js';
 
 const router = Router();
 

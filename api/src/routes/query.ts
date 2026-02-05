@@ -1,8 +1,8 @@
 // Query Route - Main API Entry Point
 import { Router, Request, Response } from 'express';
-import { translateQuery, TranslationResult } from '../services/llmService';
-import { searchSourcesByTags, Category, Source } from '../data/trustGraph';
-import { signSourceAccess, signManifest } from '../services/jwtService';
+import { translateQuery, TranslationResult } from '../services/llmService.js';
+import { searchSourcesByTags, Category, Source } from '../data/trustGraph.js';
+import { signSourceAccess, signManifest } from '../services/jwtService.js';
 
 const router = Router();
 

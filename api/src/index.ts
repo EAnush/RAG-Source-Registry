@@ -2,10 +2,10 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import queryRouter from './routes/query';
-import redirectRouter from './routes/redirect';
-import { checkLlmHealth } from './services/llmService';
-import { trustGraph } from './data/trustGraph';
+import queryRouter from './routes/query.js';
+import redirectRouter from './routes/redirect.js';
+import { checkLlmHealth } from './services/llmService.js';
+import { trustGraph } from './data/trustGraph.js';
 
 // Load environment variables
 dotenv.config();
