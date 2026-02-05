@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import queryRouter from './routes/query.js';
 import redirectRouter from './routes/redirect.js';
 import adminRouter from './routes/admin.js';
+import searchRouter from './routes/search.js';
 import { checkLlmHealth } from './services/llmService.js';
 import { trustGraph } from './data/trustGraph.js';
 
@@ -32,6 +33,7 @@ const apiRouter = express.Router();
 apiRouter.use('/query', queryRouter);
 apiRouter.use('/redirect', redirectRouter);
 apiRouter.use('/admin', adminRouter);
+apiRouter.use('/search', searchRouter);
 
 apiRouter.get('/health', async (_req, res) => {
     const llmStatus = await checkLlmHealth();
