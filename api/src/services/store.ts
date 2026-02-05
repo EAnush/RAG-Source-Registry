@@ -78,7 +78,7 @@ export class SourceStore {
      */
     static async getCategories(): Promise<string[]> {
         const sources = await this.getAllSources();
-        const categories = [...new Set(sources.map(s => s.category))];
+        const categories = Array.from(new Set(sources.map(s => s.category)));
         return categories.sort();
     }
 }
