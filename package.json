@@ -3,7 +3,7 @@
     "version": "1.0.0",
     "scripts": {
         "dev": "nodemon --exec ts-node server/src/index.ts",
-        "build": "tsc"
+        "build": "cd client && npm install && npm run build"
     },
     "dependencies": {
         "axios": "^1.13.4",
