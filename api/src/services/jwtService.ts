@@ -66,7 +66,12 @@ export function verifyToken(token: string): TokenPayload {
  * Generate a manifest-level signature for the entire response
  * This proves the entire response came from our system
  */
-export function signManifest(manifestData: object): string {
+export function signManifest(
+    query: string,
+    translation: object,
+    sources: object[]
+): string {
+    const manifestData = { query, translation, sources };
     return jwt.sign(
         { manifest: JSON.stringify(manifestData), timestamp: Date.now() },
         JWT_SECRET,
