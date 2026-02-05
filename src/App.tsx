@@ -1,4 +1,5 @@
 import { useState, useEffect, type FormEvent } from 'react';
+import { AdminDashboard } from './components/AdminDashboard';
 import './App.css';
 
 // Types matching the backend API
@@ -41,6 +42,13 @@ interface ErrorState {
 const API_BASE_URL = import.meta.env.PROD ? '' : 'http://localhost:3001';
 
 function App() {
+  // Main App State
+  const [isAdminMode, setIsAdminMode] = useState(false);
+  const [adminToken, setAdminToken] = useState<string | null>(null);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [password, setPassword] = useState('');
+
+  // Search State
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<SourceManifest | null>(null);
@@ -48,9 +56,17 @@ function App() {
   const [health, setHealth] = useState<HealthStatus | null>(null);
   const [healthChecking, setHealthChecking] = useState(true);
 
+  // Stealth Trigger State
+  const [clickCount, setClickCount] = useState(0);
+
   // Check API health on mount
   useEffect(() => {
     checkHealth();
+    // Check for existing session
+    const storedToken = localStorage.getItem('admin_token');
+    if (storedToken) {
+      setAdminToken(storedToken);
+    }
   }, []);
 
   const checkHealth = async () => {
@@ -66,6 +82,52 @@ function App() {
     }
   };
 
+  // --- STEALTH LOGIC ---
+  const handleBadgeClick = () => {
+    setClickCount((prev) => prev + 1);
+
+    // Reset if valid
+    if (clickCount + 1 >= 3) {
+      setShowLoginModal(true);
+      setClickCount(0);
+    }
+
+    // Reset counter if idle for 2 seconds
+    setTimeout(() => setClickCount(0), 2000);
+  };
+
+  const handleLogin = async (e: FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/admin/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      });
+      const data = await res.json();
+
+      if (data.success && data.token) {
+        setAdminToken(data.token);
+        localStorage.setItem('admin_token', data.token);
+        setIsAdminMode(true);
+        setShowLoginModal(false);
+        setPassword('');
+      } else {
+        alert('Access Denied');
+      }
+    } catch (err) {
+      alert('Login failed');
+    }
+  };
+
+  const handleLogout = () => {
+    setAdminToken(null);
+    localStorage.removeItem('admin_token');
+    setIsAdminMode(false);
+    checkHealth(); // Refresh stats
+  };
+
+  // --- SEARCH LOGIC ---
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!query.trim()) return;
@@ -99,8 +161,34 @@ function App() {
     return category.toLowerCase();
   };
 
+  // --- CONDITIONAL RENDER ---
+  if (isAdminMode && adminToken) {
+    return <AdminDashboard token={adminToken} onLogout={handleLogout} />;
+  }
+
   return (
     <div className="app">
+      {/* Login Modal */}
+      {showLoginModal && (
+        <div className="modal-overlay" onClick={() => setShowLoginModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h3>Admin Access</h3>
+            <form onSubmit={handleLogin}>
+              <input
+                type="password"
+                placeholder="Enter Passcode"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoFocus
+                className="search-input"
+                style={{ marginBottom: '10px' }}
+              />
+              <button type="submit" className="search-button">Unlock</button>
+            </form>
+          </div>
+        </div>
+      )}
+
       <div className="container">
         {/* Header */}
         <header className="header">
@@ -108,7 +196,14 @@ function App() {
             <span className="gradient-text">Trust Layer</span> Debug Console
           </h1>
           <p className="subtitle">The Data Firewall for Enterprise AI</p>
-          <span className="badge">MVP v1.0.0</span>
+          <span
+            className="badge"
+            onClick={handleBadgeClick}
+            title="Version 1.0.0"
+            style={{ cursor: 'pointer', userSelect: 'none' }}
+          >
+            MVP v1.0.0
+          </span>
         </header>
 
         {/* Health Status */}
@@ -138,6 +233,15 @@ function App() {
                 Trust Graph: {health.services.trustGraph.sourceCount} sources
               </span>
             </>
+          )}
+          {/* Admin Shotcut (If previously logged in) */}
+          {adminToken && (
+            <span
+              onClick={() => setIsAdminMode(true)}
+              style={{ marginLeft: '10px', cursor: 'pointer', fontSize: '12px' }}
+            >
+              🛡️
+            </span>
           )}
         </div>
 
